@@ -2,6 +2,8 @@
 
 Desktop app that loads a CSV, lets you pick a sample ID column, choose an Avery label format, and exports a multi-page A4 PDF of QR code labels — sized to match the physical sheet exactly.
 
+![App screenshot](app_screenshot.png)
+
 ---
 
 ## Setup
