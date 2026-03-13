@@ -1,0 +1,11 @@
+name: qrcode-machine
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - qrcode[pil]==8.0
+      - reportlab==4.2.5
+      - Pillow==11.1.0
