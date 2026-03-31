@@ -7,6 +7,10 @@ Desktop app that loads a CSV, lets you pick a sample ID column, choose an Avery 
 ---
 
 ## Setup
+````bash
+# Change working directory to where you downloaded this repo
+dir C:/directory/where/you/downloaded/this
+````
 
 ### Option A — conda (recommended)
 
