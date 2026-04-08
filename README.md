@@ -1,6 +1,6 @@
-# QR Label Generator
+# Label Generator
 
-Desktop app that loads a CSV, lets you pick a sample ID column, choose an Avery label format, and exports a multi-page A4 PDF of QR code labels — sized to match the physical sheet exactly.
+Desktop app that loads a CSV, lets you pick a sample ID column, choose an Avery label format and code type, and exports a multi-page A4 PDF of labels — sized to match the physical sheet exactly.
 
 ![App screenshot](app_screenshot.png)
 
@@ -41,8 +41,18 @@ python main.py
 1. Click **Load CSV** and select your file.
 2. Choose the column that contains your sample IDs.
 3. Choose your **Label Type** (Avery product code) from the dropdown.
-4. Click **Preview** to see page 1 of the generated labels.
-5. Click **Export PDF** and choose a save location. All pages are exported.
+4. Choose your **Code Type** — QR Code or Barcode (Code 128).
+5. Click **Preview** to see page 1 of the generated labels.
+6. Click **Export PDF** and choose a save location. All pages are exported.
+
+---
+
+## Code types
+
+| Option | Format | Character support |
+|---|---|---|
+| QR Code | QR (ISO 18004) | Full Unicode |
+| Barcode | Code 128 | Full ASCII (0–127) |
 
 ---
 
@@ -62,7 +72,8 @@ Adding a new format is one dict entry in `app/labels.py`.
 |---|---|
 | Page size | A4 |
 | QR error correction | Level L |
-| Content | QR code + human-readable ID below |
+| Code image | Auto-scales to fill available label area (any aspect ratio) |
+| Content | Code image + human-readable ID below |
 | Long IDs | Font auto-scales to fit within the label |
 | Duplicates | Skipped automatically |
 | Empty cells | Warned and skipped |
@@ -72,15 +83,16 @@ Adding a new format is one dict entry in `app/labels.py`.
 ## Project structure
 
 ```
-QRCODE_Machine/
+QRCodeGen/
 ├── main.py            # Entry point
 ├── requirements.txt
 ├── environment.yml
 ├── README.md
 └── app/
-    ├── gui.py         # Tkinter main window
-    ├── labels.py      # Avery label preset catalogue
-    ├── pdf_gen.py     # ReportLab PDF generation
-    ├── preview.py     # Tkinter preview window (page 1)
-    └── qr_utils.py    # QR code byte generation
+    ├── gui.py             # Tkinter main window
+    ├── labels.py          # Avery label preset catalogue
+    ├── pdf_gen.py         # ReportLab PDF generation
+    ├── preview.py         # Tkinter preview window (page 1)
+    ├── qr_utils.py        # QR code byte generation
+    └── barcode_utils.py   # Code 128 barcode byte generation
 ```
