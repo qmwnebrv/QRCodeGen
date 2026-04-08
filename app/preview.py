@@ -5,7 +5,7 @@ from PIL import Image, ImageTk
 from reportlab.lib.pagesizes import A4
 
 from app.labels import DEFAULT_PRESET, LABEL_PRESETS
-from app.pdf_gen import GAP, PAD, _qr_size
+from app.pdf_gen import GAP, PAD, TEXT_H
 
 PAGE_W, PAGE_H = A4
 PREVIEW_W = 530
@@ -20,7 +20,7 @@ class PreviewWindow(tk.Toplevel):
         self,
         parent: tk.Tk,
         ids: list,
-        qr_cache: dict,
+        img_cache: dict,
         preset_key: str = DEFAULT_PRESET,
     ) -> None:
         super().__init__(parent)
@@ -37,13 +37,15 @@ class PreviewWindow(tk.Toplevel):
         col_gap     = p["col_gap"]
         row_gap     = p["row_gap"]
         per_page    = cols * rows
-        qr_size     = _qr_size(label_h)
 
         shown = min(len(ids), per_page)
         self.title(f"Preview – Page 1  ({shown} of {len(ids)} labels)")
 
         canvas = tk.Canvas(self, width=PREVIEW_W, height=PREVIEW_H, bg="white")
         canvas.pack()
+
+        avail_w_pt = label_w - 2 * PAD
+        avail_h_pt = label_h - 2 * PAD - TEXT_H - GAP
 
         for i, label_id in enumerate(ids[:per_page]):
             col, row = i % cols, i // cols
@@ -53,20 +55,24 @@ class PreviewWindow(tk.Toplevel):
             ly = (margin_top  + row * (label_h + row_gap)) * SCALE
             lw = label_w * SCALE
 
-            # QR image
-            qr_s = int(qr_size * SCALE)
-            qr_x = lx + (lw - qr_s) / 2
-            qr_y = ly + PAD * SCALE
+            # Fit image dynamically using its actual aspect ratio
+            raw = Image.open(io.BytesIO(img_cache[label_id]))
+            iw, ih = raw.size
+            avail_w_px = avail_w_pt * SCALE
+            avail_h_px = avail_h_pt * SCALE
+            sc = min(avail_w_px / iw, avail_h_px / ih)
+            draw_w, draw_h = int(iw * sc), int(ih * sc)
 
-            img = Image.open(io.BytesIO(qr_cache[label_id])).resize(
-                (qr_s, qr_s), Image.LANCZOS
-            )
+            img_x = lx + (lw - draw_w) / 2
+            img_y = ly + PAD * SCALE
+
+            img = raw.resize((draw_w, draw_h), Image.LANCZOS)
             photo = ImageTk.PhotoImage(img)
             self._refs.append(photo)
-            canvas.create_image(qr_x, qr_y, anchor="nw", image=photo)
+            canvas.create_image(img_x, img_y, anchor="nw", image=photo)
 
             # ID text – shrink font until it fits within the label width
-            text_y     = qr_y + qr_s + GAP * SCALE
+            text_y     = img_y + draw_h + GAP * SCALE
             max_text_w = (label_w - 2 * PAD) * SCALE
             fs = max(5, int(9 * SCALE))
             _tmp = canvas.create_text(0, -9999, text=label_id, font=("Helvetica", fs))

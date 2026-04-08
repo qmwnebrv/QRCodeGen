@@ -2,6 +2,7 @@ import csv
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from app.barcode_utils import make_barcode_bytes
 from app.labels import DEFAULT_PRESET, LABEL_PRESETS
 from app.pdf_gen import generate_pdf
 from app.preview import PreviewWindow
@@ -11,12 +12,12 @@ from app.qr_utils import make_qr_bytes
 class App:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("QR Label Generator")
+        self.root.title("Label Generator")
         self.root.resizable(False, False)
 
         self._rows: list[dict] = []
         self._ids: list[str] = []
-        self._qr_cache: dict[str, bytes] = {}
+        self._img_cache: dict[str, bytes] = {}
 
         self._build_ui()
 
@@ -55,13 +56,27 @@ class App:
         )
         self._preset_cb.grid(row=2, column=1, padx=10, sticky="w", pady=(4, 2))
 
-        # Row 3 – status line
-        self._status_lbl = tk.Label(f, text="", fg="grey")
-        self._status_lbl.grid(row=3, column=0, columnspan=2, sticky="w", pady=(4, 0))
+        # Row 3 – code type selector
+        tk.Label(f, text="Code Type:").grid(row=3, column=0, sticky="w", pady=(4, 2))
+        self._code_type_var = tk.StringVar(value="qr")
+        code_frame = tk.Frame(f)
+        code_frame.grid(row=3, column=1, padx=10, sticky="w", pady=(4, 2))
+        tk.Radiobutton(
+            code_frame, text="QR Code", variable=self._code_type_var,
+            value="qr", command=self._on_code_type,
+        ).pack(side="left")
+        tk.Radiobutton(
+            code_frame, text="Barcode (Code 128)", variable=self._code_type_var,
+            value="barcode", command=self._on_code_type,
+        ).pack(side="left", padx=(12, 0))
 
-        # Row 4 – action buttons
+        # Row 4 – status line
+        self._status_lbl = tk.Label(f, text="", fg="grey")
+        self._status_lbl.grid(row=4, column=0, columnspan=2, sticky="w", pady=(4, 0))
+
+        # Row 5 – action buttons
         btn_f = tk.Frame(f)
-        btn_f.grid(row=4, column=0, columnspan=2, pady=10)
+        btn_f.grid(row=5, column=0, columnspan=2, pady=10)
 
         self._prev_btn = tk.Button(
             btn_f, text="Preview", width=12, state="disabled", command=self._preview
@@ -117,6 +132,9 @@ class App:
     def _on_col(self, _event=None) -> None:
         self._extract_ids(warn_empty=True)
 
+    def _on_code_type(self) -> None:
+        self._img_cache = {}
+
     def _extract_ids(self, warn_empty: bool) -> None:
         col = self._col_var.get()
         seen: set[str] = set()
@@ -134,7 +152,7 @@ class App:
             ids.append(val)
 
         self._ids = ids
-        self._qr_cache = {}
+        self._img_cache = {}
 
         enabled = "normal" if ids else "disabled"
         self._prev_btn.config(state=enabled)
@@ -151,13 +169,21 @@ class App:
         self._status_lbl.config(text=status)
 
     def _build_cache(self) -> None:
+        use_barcode = self._code_type_var.get() == "barcode"
         for label_id in self._ids:
-            if label_id not in self._qr_cache:
-                self._qr_cache[label_id] = make_qr_bytes(label_id)
+            if label_id not in self._img_cache:
+                if use_barcode:
+                    self._img_cache[label_id] = make_barcode_bytes(label_id)
+                else:
+                    self._img_cache[label_id] = make_qr_bytes(label_id)
 
     def _preview(self) -> None:
-        self._build_cache()
-        PreviewWindow(self.root, self._ids, self._qr_cache, self._selected_preset_key())
+        try:
+            self._build_cache()
+        except Exception as exc:
+            messagebox.showerror("Preview failed", str(exc))
+            return
+        PreviewWindow(self.root, self._ids, self._img_cache, self._selected_preset_key())
 
     def _export(self) -> None:
         path = filedialog.asksaveasfilename(
@@ -168,9 +194,9 @@ class App:
         if not path:
             return
 
-        self._build_cache()
         try:
-            generate_pdf(self._ids, self._qr_cache, path, self._selected_preset_key())
+            self._build_cache()
+            generate_pdf(self._ids, self._img_cache, path, self._selected_preset_key())
             messagebox.showinfo("Exported", f"PDF saved:\n{path}")
         except Exception as exc:
             messagebox.showerror("Export failed", str(exc))

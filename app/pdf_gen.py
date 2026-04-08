@@ -1,5 +1,6 @@
 import io
 
+from PIL import Image
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as rl_canvas
@@ -13,12 +14,16 @@ PAGE_W, PAGE_H = A4
 # ---------------------------------------------------------------------------
 PAD    = 4.0   # pt – gap between label edge and content
 TEXT_H = 14.0  # pt – height reserved for the ID text line
-GAP    = 3.0   # pt – space between the QR image and the text
+GAP    = 3.0   # pt – space between the code image and the text
 
 
-def _qr_size(label_h: float) -> float:
-    """QR image side length (square) that fits inside a label of given height."""
-    return label_h - 2 * PAD - TEXT_H - GAP
+def _fit_image(img_bytes: bytes, avail_w: float, avail_h: float) -> tuple:
+    """Return (draw_w, draw_h) scaled to fit within avail_w × avail_h,
+    preserving the image's aspect ratio. Works for any image shape."""
+    img = Image.open(io.BytesIO(img_bytes))
+    iw, ih = img.size
+    scale = min(avail_w / iw, avail_h / ih)
+    return iw * scale, ih * scale
 
 
 def _fit_font(c: rl_canvas.Canvas, text: str, max_w: float, start: int = 11) -> int:
@@ -33,15 +38,18 @@ def draw_label(
     x: float,
     y: float,
     label_id: str,
-    qr_bytes: bytes,
+    img_bytes: bytes,
     label_w: float,
     label_h: float,
 ) -> None:
     """Draw one label. x, y = bottom-left corner in PDF points."""
-    qr_size = _qr_size(label_h)
-    qr_x = x + (label_w - qr_size) / 2
-    qr_y = y + TEXT_H + GAP
-    c.drawImage(ImageReader(io.BytesIO(qr_bytes)), qr_x, qr_y, qr_size, qr_size)
+    avail_w = label_w - 2 * PAD
+    avail_h = label_h - 2 * PAD - TEXT_H - GAP
+    draw_w, draw_h = _fit_image(img_bytes, avail_w, avail_h)
+
+    img_x = x + (label_w - draw_w) / 2
+    img_y = y + TEXT_H + GAP
+    c.drawImage(ImageReader(io.BytesIO(img_bytes)), img_x, img_y, draw_w, draw_h)
 
     fs = _fit_font(c, label_id, label_w - 2 * PAD)
     c.setFont("Helvetica", fs)
@@ -51,20 +59,20 @@ def draw_label(
 
 def generate_pdf(
     ids: list,
-    qr_cache: dict,
+    img_cache: dict,
     output_path: str,
     preset_key: str = DEFAULT_PRESET,
 ) -> None:
-    p          = LABEL_PRESETS[preset_key]
-    cols       = p["cols"]
-    rows       = p["rows"]
-    label_w    = p["label_w"]
-    label_h    = p["label_h"]
+    p           = LABEL_PRESETS[preset_key]
+    cols        = p["cols"]
+    rows        = p["rows"]
+    label_w     = p["label_w"]
+    label_h     = p["label_h"]
     margin_top  = p["margin_top"]
     margin_left = p["margin_left"]
-    col_gap    = p["col_gap"]
-    row_gap    = p["row_gap"]
-    per_page   = cols * rows
+    col_gap     = p["col_gap"]
+    row_gap     = p["row_gap"]
+    per_page    = cols * rows
 
     c = rl_canvas.Canvas(output_path, pagesize=A4)
 
@@ -77,6 +85,6 @@ def generate_pdf(
         x = margin_left + col * (label_w + col_gap)
         y = PAGE_H - margin_top - row * (label_h + row_gap) - label_h
 
-        draw_label(c, x, y, label_id, qr_cache[label_id], label_w, label_h)
+        draw_label(c, x, y, label_id, img_cache[label_id], label_w, label_h)
 
     c.save()
