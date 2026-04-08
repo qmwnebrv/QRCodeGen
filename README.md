@@ -7,33 +7,30 @@ Desktop app that loads a CSV, lets you pick a sample ID column, choose an Avery 
 ---
 
 ## Setup
+- Open Anaconda Prompt
+````bash
+# Change working directory to where you downloaded this repo
+cd C:/directory/where/you/downloaded/this
+````
 
-### Option A — conda (recommended)
+### Option A — conda (recommended) * ONLY DO THIS ONCE *
 
 ```bash
 conda env create -f environment.yml
-conda activate qrcode-machine
 ```
 
-### Option B — pip + venv
-
-```bash
-python -m venv .venv
-
-# Windows
-.venv\Scripts\activate
-
-# macOS / Linux
-source .venv/bin/activate
-
-pip install -r requirements.txt
-```
 
 ---
 
 ## Run
 
 ```bash
+cd C:/directory/where/you/downloaded/this
+
+# Activate conda environment
+conda activate qrcode-machine
+
+# Run program
 python main.py
 ```
 
