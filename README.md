@@ -2,7 +2,7 @@
 
 Desktop app that loads a CSV, lets you pick a sample ID column, choose an Avery label format and code type, and exports a multi-page A4 PDF of labels — sized to match the physical sheet exactly.
 
-![App screenshot](app_screenshot.png)
+<img width="425" height="267" alt="image" src="https://github.com/user-attachments/assets/c8cef0d1-8d1e-44d5-9408-0a81f7ad839b" />
 
 ---
 
